@@ -7,7 +7,7 @@ from refine import refine_queries
 from inquiry import maybe_ask_question
 from concept_graph import build_concept_paper_map
 from contradictions import detect_contradictions
-from citations import fetch_citations
+from citations import fetch_citation_count
 
 
 def run_agent(objective: str):
@@ -31,47 +31,39 @@ def run_agent(objective: str):
             state.phase = Phase.SEARCH
 
         # =====================
-        # 2. SEARCH
+        # 2. SEARCH (retrieval only)
         # =====================
         elif state.phase == Phase.SEARCH:
             for sg in state.subgoals.values():
                 if sg.completed:
                     continue
 
-                queries = sg.refined_queries or [sg.description]
-                all_papers = []  # ✅ always initialize
+                queries = sg.refined_queries or [
+                f"{sg.name.replace('_', ' ')} {objective}"
+                ]
 
                 for q in queries:
                     try:
-                        results = search_arxiv(q)
-                        all_papers.extend(results)
+                        papers = search_arxiv(q)
+                        for p in papers:
+                            sg.papers[p.id] = p
                     except Exception:
                         continue
-
-                # store papers
-                for p in all_papers:
-                    sg.papers[p.id] = p
-
-            # fetch citations AFTER papers exist
-            for sg in state.subgoals.values():
-                for p in sg.papers.values():
-                    if not p.citation_edges:
-                        try:
-                            p.citation_edges = fetch_citations(
-                                p.id,
-                                max_depth=1
-                            )
-                        except Exception:
-                            p.citation_edges = []
 
             state.phase = Phase.SCORE
 
         # =====================
-        # 3. SCORE
+        # 3. SCORE (ranking + enrichment)
         # =====================
         elif state.phase == Phase.SCORE:
             for sg in state.subgoals.values():
                 for p in sg.papers.values():
+                    if p.citation_count == 0:
+                        try:
+                            p.citation_count = fetch_citation_count(p.id)
+                        except Exception:
+                            p.citation_count = 0
+
                     p.score = score_paper(p, sg.description)
 
             state.phase = Phase.ANALYZE
@@ -96,7 +88,6 @@ def run_agent(objective: str):
                 sg.concept_map = build_concept_paper_map(ranked)
                 sg.gaps = detect_concept_gaps(sg.concept_map)
 
-                # safety-specific contradiction check
                 if sg.name.lower() == "safety":
                     contradictions = detect_contradictions(sg.papers.values())
                     if contradictions:

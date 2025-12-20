@@ -17,8 +17,10 @@ class Paper(BaseModel):
     title: str
     abstract: str
     year: int
-    citations: int = 0
     score: float = 0.0
+    url: Optional[str] = None
+    pdf_url: Optional[str] = None
+    citation_count: int = 0
 
     # --- Ranking features (learned / heuristic) ---
     semantic_score: float = 0.0

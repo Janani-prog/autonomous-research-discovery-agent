@@ -1,29 +1,18 @@
 import requests
 
-SEMANTIC_SCHOLAR = "https://api.semanticscholar.org/graph/v1"
+def fetch_citation_count(arxiv_id: str) -> int:
+    url = f"https://api.semanticscholar.org/graph/v1/paper/arXiv:{arxiv_id}"
+    params = {
+        "fields": "citationCount"
+    }
 
-def fetch_citations(paper_id, max_depth=1):
-    """
-    Returns citation graph up to depth N
-    """
-    visited = set()
-    edges = []
-
-    def dfs(pid, depth):
-        if depth > max_depth or pid in visited:
-            return
-        visited.add(pid)
-
-        url = f"{SEMANTIC_SCHOLAR}/paper/{pid}/citations"
-        params = {"fields": "paperId"}
-        r = requests.get(url, params=params)
+    try:
+        r = requests.get(url, params=params, timeout=10)
         if r.status_code != 200:
-            return
+            return 0
 
-        for c in r.json().get("data", []):
-            cited = c["citingPaper"]["paperId"]
-            edges.append((cited, pid))
-            dfs(cited, depth + 1)
+        data = r.json()
+        return data.get("citationCount", 0)
 
-    dfs(paper_id, 0)
-    return edges
+    except Exception:
+        return 0

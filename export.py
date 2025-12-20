@@ -9,7 +9,24 @@ def export_markdown(state, path="report.md"):
 
             f.write("### Top Papers\n")
             for p in sorted(sg.papers.values(), key=lambda p: p.score, reverse=True)[:3]:
-                f.write(f"- {p.year} — {p.title}\n")
+                line = f"- {p.year} | "
+                if p.url:
+                    line += f"[{p.title}]({p.url})"
+                else:
+                    line += p.title
+
+                extras = []
+
+                if getattr(p, "pdf_url", None):
+                    extras.append(f"[PDF]({p.pdf_url})")
+
+                if getattr(p, "citation_count", 0) > 0:
+                    extras.append(f"Citations: {p.citation_count}")
+
+                if extras:
+                    line += " — " + " | ".join(extras)
+
+                f.write(line + "\n")
 
             if sg.gaps:
                 f.write("\n### Gaps\n")

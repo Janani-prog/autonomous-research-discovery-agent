@@ -1,23 +1,51 @@
 def generate_subgoals(objective: str):
-    """
-    Deterministic subgoal decomposition.
-    No LLMs.
-    """
+    obj = objective.lower()
 
-    templates = {
-        "perception": "Perception systems for autonomous driving",
-        "planning": "Planning and decision-making for self-driving cars",
-        "control": "Vehicle control and actuation",
-        "localization": "Localization and mapping methods",
-        "safety": "Safety, verification, and robustness"
-    }
-
-    subgoals = {}
-
-    for name, desc in templates.items():
-        subgoals[name] = {
-            "name": name,
-            "description": f"{desc} related to {objective}"
+    # --- LLM / NLP DOMAIN ---
+    if "language model" in obj or "llm" in obj or "hallucination" in obj:
+        return {
+            "INPUT_GROUNDING": {
+                "name": "input_grounding",
+                "description": "Input grounding and context alignment related to " + objective
+            },
+            "REASONING": {
+                "name": "reasoning",
+                "description": "Reasoning and inference mechanisms related to " + objective
+            },
+            "GENERATION": {
+                "name": "generation",
+                "description": "Text generation behavior and decoding strategies related to " + objective
+            },
+            "EVALUATION": {
+                "name": "evaluation",
+                "description": "Evaluation methods and benchmarks related to " + objective
+            },
+            "SAFETY": {
+                "name": "safety",
+                "description": "Safety, robustness, and verification related to " + objective
+            }
         }
 
-    return subgoals
+    # --- AUTONOMOUS SYSTEMS DOMAIN (default) ---
+    return {
+        "PERCEPTION": {
+            "name": "perception",
+            "description": "Perception systems related to " + objective
+        },
+        "PLANNING": {
+            "name": "planning",
+            "description": "Planning and decision-making related to " + objective
+        },
+        "CONTROL": {
+            "name": "control",
+            "description": "Control and actuation related to " + objective
+        },
+        "LOCALIZATION": {
+            "name": "localization",
+            "description": "Localization and mapping related to " + objective
+        },
+        "SAFETY": {
+            "name": "safety",
+            "description": "Safety, verification, and robustness related to " + objective
+        }
+    }
