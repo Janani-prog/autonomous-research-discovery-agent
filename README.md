@@ -258,4 +258,4 @@ This project focuses on that problem directly.
 
 ## License
 
-This project is provided under the MIT License. See the [LICENSE] file for details. Feel free to adapt and reuse the code and ideas.
+This project is provided under the MIT License. See the [LICENSE](./LICENSE) file for details. Feel free to adapt and reuse the code and ideas.
