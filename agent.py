@@ -120,7 +120,7 @@ def run_agent(objective: str):
         # 5. INQUIRE
         # =====================
         elif state.phase == Phase.INQUIRE:
-            maybe_ask_question(state)
+            state.inquiry = maybe_ask_question(state)
             state.phase = Phase.TERMINATE
 
     return state

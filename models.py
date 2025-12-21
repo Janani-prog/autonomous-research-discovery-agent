@@ -51,4 +51,5 @@ class ResearchState(BaseModel):
     subgoals: Dict[str, Subgoal] = Field(default_factory=dict)
     confidence: float = 0.3
     user_intent: Optional[str] = None
+    inquiry: Optional[dict] = None
 
