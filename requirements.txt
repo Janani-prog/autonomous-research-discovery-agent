@@ -7,6 +7,5 @@ tqdm
 pydantic
 scikit-learn
 scholarly
-fastapi 
-uvicorn
 joblib
+flask

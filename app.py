@@ -1,24 +1,26 @@
-from fastapi import FastAPI
+from flask import Flask, request, jsonify, render_template
 from agent import run_agent
+import os
 
-app = FastAPI(
-    title="Autonomous Research Discovery Agent",
-    description="Self-directed research agent with gap analysis and inquiry control",
-    version="1.0.0"
-)
+app = Flask(__name__)
 
-@app.post("/run")
-def run_research(payload: dict):
-    objective = payload.get("objective")
+@app.route("/")
+def home():
+    return render_template("index.html")
+
+@app.route("/run", methods=["POST"])
+def run():
+    data = request.get_json(silent=True) or {}
+    objective = data.get("objective")
+
     if not objective:
-        return {"error": "Missing 'objective' in request body"}
+        return jsonify({"error": "Missing objective"}), 400
 
     state = run_agent(objective)
 
     response = {
         "objective": state.objective,
         "confidence": state.confidence,
-        "inquiry": state.inquiry,
         "subgoals": {}
     }
 
@@ -44,4 +46,8 @@ def run_research(payload: dict):
             ]
         }
 
-    return response
+    return jsonify(response)
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))

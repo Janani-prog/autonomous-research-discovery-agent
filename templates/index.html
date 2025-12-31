@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Autonomous Research Discovery Agent</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 40px auto;
+        }
+        textarea {
+            width: 100%;
+            height: 80px;
+            font-size: 16px;
+        }
+        button {
+            margin-top: 10px;
+            padding: 10px 16px;
+            font-size: 16px;
+        }
+        pre {
+            background: #f6f6f6;
+            padding: 16px;
+            white-space: pre-wrap;
+        }
+        h3 {
+            margin-top: 24px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        hr {
+            margin: 24px 0;
+      }
+      .loader {
+          border: 6px solid #f3f3f3;
+          border-top: 6px solid #333;
+          border-radius: 50%;
+          width: 40px;
+          height: 40px;
+          animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+
+    </style>
+</head>
+<body>
+
+<h1>Autonomous Research Discovery Agent</h1>
+
+<p>Enter a high-level research objective:</p>
+
+<textarea id="objective"></textarea><br>
+<button onclick="runAgent()">Run Agent</button>
+
+<h2>Output</h2>
+<pre id="output">Waiting for input…</pre>
+
+<div id="status" style="margin-top:16px; color:#555;"></div>
+
+<div id="spinner" style="display:none; margin:16px 0;">
+  <div class="loader"></div>
+  <p style="margin-top:8px;">Analyzing literature, ranking papers, and detecting research gaps…</p>
+</div>
+
+<div style="margin-top:16px;">
+  <a href="https://github.com/Janani-prog/autonomous-research-discovery-agent" target="_blank">
+    View full methodology & code on GitHub
+  </a>
+</div>
+
+<div id="output" style="margin-top:24px;"></div>
+
+
+<script>
+async function runAgent() {
+    const objective = document.getElementById("objective").value;
+    const output = document.getElementById("output");
+    const spinner = document.getElementById("spinner");
+    const status = document.getElementById("status");
+
+    output.innerHTML = "";
+    spinner.style.display = "block";
+    status.textContent = "Decomposing objective into research subgoals…";
+
+    const response = await fetch("/run", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ objective })
+    });
+
+    status.textContent = "Retrieving papers, scoring relevance, and analyzing gaps…";
+    const data = await response.json();
+
+    spinner.style.display = "none";
+    status.textContent = "Analysis complete.";
+
+    let html = `<h3>Objective</h3><p>${data.objective}</p>`;
+    html += `<p><strong>Overall confidence:</strong> ${data.confidence}</p>`;
+
+    for (const [name, sg] of Object.entries(data.subgoals)) {
+        html += `<hr>`;
+        html += `<h3>${name.replace("_", " ")}</h3>`;
+        html += `<p>${sg.description}</p>`;
+        html += `<p><strong>Status:</strong> ${sg.completed ? "Complete" : "Incomplete"}</p>`;
+
+        if (sg.gaps.length > 0) {
+            html += `<p><strong>Unresolved gaps:</strong></p><ul>`;
+            sg.gaps.forEach(g => html += `<li>${g}</li>`);
+            html += `</ul>`;
+        }
+
+        html += `<p><strong>Top papers:</strong></p><ul>`;
+        sg.top_papers.forEach(p => {
+            html += `
+              <li>
+                <strong>${p.title}</strong> (${p.year})<br>
+                <a href="${p.url}" target="_blank">Abstract</a> |
+                <a href="${p.pdf}" target="_blank">PDF</a>
+              </li>
+            `;
+        });
+        html += `</ul>`;
+    }
+
+    output.innerHTML = html;
+}
+</script>
+
+
+
+</body>
+</html>
