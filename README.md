@@ -238,6 +238,22 @@ python train_once.py
 
 This generates `ranker.pkl`, which is automatically used by the agent. No retraining is required unless you want to experiment with ranking behavior.
 
+### Offline Learning Pipeline
+
+The project includes an offline learning workflow used to train and calibrate the paper-ranking system. It is intended to be run offline and the produced artifacts are consumed by the live inference pipeline (they are not retrained at runtime).
+
+Key scripts:
+
+- `train_data.py` — generates training examples and ranking features from research corpora (query/paper pairs, features like semantic similarity, recency, citation signals).
+- `train_ranker.py` — trains a lightweight ranking model (e.g., linear ranker or small scikit-learn pipeline) using the generated features and evaluates calibration and ranking metrics.
+- `train_once.py` — convenience script that runs the full offline training cycle (data generation → training → evaluation) and writes model artifacts (e.g., `ranker.pkl`) to the repo.
+
+Best practices:
+
+- Run training offline and validate metrics before promoting a model to production.
+- Keep model artifacts versioned (e.g., with hash or timestamp) and store metadata about training data and evaluation metrics.
+
+
 ### Tech stack 🧰
 
 - **Python** (core)
