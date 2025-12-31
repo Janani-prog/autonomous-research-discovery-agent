@@ -1,5 +1,4 @@
 from flask import Flask, request, jsonify, render_template
-from agent import run_agent
 import os
 
 app = Flask(__name__)
@@ -8,8 +7,14 @@ app = Flask(__name__)
 def home():
     return render_template("index.html")
 
+@app.route("/health")
+def health():
+    return {"status": "ok"}
+
 @app.route("/run", methods=["POST"])
 def run():
+    from agent import run_agent  # ✅ moved here
+
     data = request.get_json(silent=True) or {}
     objective = data.get("objective")
 
@@ -47,7 +52,3 @@ def run():
         }
 
     return jsonify(response)
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port, debug=False)
