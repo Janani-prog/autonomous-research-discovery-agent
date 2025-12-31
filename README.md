@@ -252,9 +252,6 @@ Best practices:
 - ~4× increase in topical coverage vs manual querying
 - ~60–80% task completion autonomy without user input
 
-
-### Training the Ranking Model (Optional)
-
 ---
 
 ## What Does NOT Require Paid APIs
