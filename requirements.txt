@@ -1,6 +1,5 @@
 requests
 arxiv
-sentence-transformers
 faiss-cpu
 numpy
 tqdm
@@ -8,5 +7,4 @@ pydantic
 scikit-learn
 scholarly
 joblib
-flask
-gunicorn
+gradio

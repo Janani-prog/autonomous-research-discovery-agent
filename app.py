@@ -1,54 +1,46 @@
-from flask import Flask, request, jsonify, render_template
-import os
+import gradio as gr
+from agent import run_agent
 
-app = Flask(__name__)
-
-@app.route("/")
-def home():
-    return render_template("index.html")
-
-@app.route("/health")
-def health():
-    return {"status": "ok"}
-
-@app.route("/run", methods=["POST"])
-def run():
-    from agent import run_agent  # ✅ moved here
-
-    data = request.get_json(silent=True) or {}
-    objective = data.get("objective")
-
-    if not objective:
-        return jsonify({"error": "Missing objective"}), 400
-
+def run(objective):
     state = run_agent(objective)
 
-    response = {
-        "objective": state.objective,
-        "confidence": state.confidence,
-        "subgoals": {}
-    }
+    output = []
+    output.append(f"Objective: {state.objective}\n")
+    output.append(f"Confidence: {round(state.confidence, 2)}\n")
 
     for name, sg in state.subgoals.items():
-        response["subgoals"][name] = {
-            "description": sg.description,
-            "completed": sg.completed,
-            "gaps": sg.gaps,
-            "top_papers": [
-                {
-                    "title": p.title,
-                    "year": p.year,
-                    "url": p.url,
-                    "pdf": p.pdf_url,
-                    "citations": p.citation_count,
-                    "score": round(p.score, 3)
-                }
-                for p in sorted(
-                    sg.papers.values(),
-                    key=lambda p: p.score,
-                    reverse=True
-                )[:3]
-            ]
-        }
+        output.append(f"\n## {name}")
+        output.append(sg.description.strip())
+        output.append(f"Completed: {sg.completed}")
 
-    return jsonify(response)
+        if sg.gaps:
+            output.append("Gaps:")
+            for g in sg.gaps:
+                output.append(f"- {g}")
+
+        output.append("Top Papers:")
+        for p in sorted(sg.papers.values(), key=lambda x: x.score, reverse=True)[:3]:
+            output.append(
+                f"- {p.year} | {p.title}\n  {p.url}"
+            )
+
+    return "\n".join(output)
+
+demo = gr.Interface(
+    fn=run,
+    inputs=gr.Textbox(
+        label="High-level research objective",
+        placeholder="e.g. hallucination mitigation in large language models",
+        lines=2
+    ),
+    outputs=gr.Markdown(label="Research Analysis"),
+    title="Autonomous Research Discovery Agent",
+    description=(
+        "Decomposes research objectives, retrieves papers, "
+        "ranks relevance, detects gaps, and surfaces insights."
+    ),
+    allow_flagging="never"
+)
+
+if __name__ == "__main__":
+    demo.launch()
