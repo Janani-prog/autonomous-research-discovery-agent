@@ -4,9 +4,6 @@ An autonomous research system that transforms a high-level research objective in
 
 ---
 
-**Live Demo:**  
-https://huggingface.co/spaces/jananijayalakshmi2403/autonomous-research-discovery-agent
-
 ## Overview
 
 ARDA is designed to simulate how a skilled researcher approaches an unfamiliar topic:
