@@ -8,7 +8,9 @@ def extract_concepts(papers, top_k=10):
     Returns: dict {concept: count}
     """
 
-    abstracts = [p.abstract for p in papers]
+    abstracts = [p.abstract for p in papers if p.abstract and p.abstract.strip()]
+    if not abstracts:
+        return {}
 
     vectorizer = TfidfVectorizer(
         stop_words="english",

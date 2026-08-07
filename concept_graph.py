@@ -1,40 +1,33 @@
 from collections import defaultdict
 
+from concepts import extract_concepts
+
 
 def build_concept_paper_map(papers, top_k=15):
     """
-    Build mapping: concept -> list of paper IDs that mention it.
+    Identifies the top-k most distinctive concepts (unigrams/bigrams) across
+    this paper batch via TF-IDF (concepts.extract_concepts), then maps each
+    identified concept back to the specific papers whose title+abstract
+    actually contain it.
+
+    Previously this ran its own simple word-length-and-frequency filter per
+    paper independently (keep words >4 chars, drop an 18-word stopword list,
+    rank by raw frequency) - no real term-importance weighting, and it
+    duplicated a second, better TF-IDF n-gram extractor (concepts.py) that
+    existed in the repo but was never actually imported anywhere. Using that
+    one here means the stronger implementation is the one that's live, and
+    there's no redundant dead module left behind.
     """
+    if not papers:
+        return {}
+
+    concept_scores = extract_concepts(papers, top_k=top_k)  # {term: importance}
     concept_map = defaultdict(list)
 
     for paper in papers:
         text = f"{paper.title} {paper.abstract}".lower()
-
-        for concept in extract_simple_concepts(text, top_k):
-            concept_map[concept].append(paper.id)
+        for concept in concept_scores:
+            if concept in text:
+                concept_map[concept].append(paper.id)
 
     return dict(concept_map)
-
-
-def extract_simple_concepts(text: str, top_k=15):
-    """
-    Extremely simple noun-like concept extraction.
-    Deterministic, no LLM.
-    """
-    stopwords = {
-        "the", "and", "of", "to", "for", "with", "in", "on",
-        "a", "an", "by", "is", "are", "this", "that"
-    }
-
-    words = [
-        w.strip(".,()").lower()
-        for w in text.split()
-        if len(w) > 4 and w not in stopwords
-    ]
-
-    freq = {}
-    for w in words:
-        freq[w] = freq.get(w, 0) + 1
-
-    ranked = sorted(freq.items(), key=lambda x: x[1], reverse=True)
-    return [w for w, _ in ranked[:top_k]]

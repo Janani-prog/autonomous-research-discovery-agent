@@ -1,6 +1,15 @@
 import arxiv
 from models import Paper
 
+# arxiv>=2.0 moved iteration from Search.results() onto a Client - the old
+# `for r in search.results()` call raises AttributeError on any currently
+# installable version of the package (confirmed against arxiv==4.0.1, where
+# this silently made every single arXiv search in the whole pipeline return
+# zero papers, since agent.py's SEARCH phase wraps this call in a bare
+# `except Exception: continue`). One client is reused across calls per the
+# library's own recommendation, rather than constructed per search.
+_client = arxiv.Client()
+
 
 def search_arxiv(query: str, max_results: int = 25):
     """
@@ -16,7 +25,7 @@ def search_arxiv(query: str, max_results: int = 25):
 
     results = []
 
-    for r in search.results():
+    for r in _client.results(search):
         try:
             entry_id = r.entry_id.split("/")[-1]
 

@@ -20,9 +20,10 @@ for name, sg in state.subgoals.items():
         print("\nRemaining Gaps:")
         for g in sg.gaps:
             print("-", g)
-print("\nConcept Coverage:")
-for concept, papers in list(sg.concept_map.items())[:5]:
-    print(f"- {concept}: {len(papers)} papers")
+
+    print("\nConcept Coverage:")
+    for concept, papers in list(sg.concept_map.items())[:5]:
+        print(f"- {concept}: {len(papers)} papers")
 
 
 print("\n=== CROSS-SUBGOAL INSIGHTS ===")
@@ -32,7 +33,7 @@ for g in cross_gaps:
     print("-", g)
 
 export_markdown(state)
-print("\n📄 Report written to report.md")
+print("\nReport written to report.md")
 
 print("\n=== AGENT METRICS ===")
 metrics = compute_metrics(state)
