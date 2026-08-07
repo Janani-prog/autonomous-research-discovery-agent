@@ -1,0 +1,77 @@
+{
+  "timestamp": "20260807_223323",
+  "num_objectives": 5,
+  "num_attempted": 6,
+  "avg_agent_only_concepts": 113.2,
+  "avg_manual_only_concepts": 113.2,
+  "avg_shared_concepts": 286.8,
+  "avg_jaccard_similarity": 0.56,
+  "avg_agent_queries_per_run": 18.6,
+  "per_objective": [
+    {
+      "objective": "hallucination mitigation in large language models",
+      "agent_queries_issued": 21,
+      "agent_unique_papers": 127,
+      "manual_unique_papers": 127,
+      "agent_concepts_total": 400,
+      "manual_concepts_total": 400,
+      "shared_concepts": 305,
+      "agent_only_concepts": 95,
+      "manual_only_concepts": 95,
+      "jaccard_similarity": 0.616,
+      "completion_ratio": 0.0
+    },
+    {
+      "objective": "parameter efficient fine tuning for large language models",
+      "agent_queries_issued": 21,
+      "agent_unique_papers": 137,
+      "manual_unique_papers": 137,
+      "agent_concepts_total": 400,
+      "manual_concepts_total": 400,
+      "shared_concepts": 265,
+      "agent_only_concepts": 135,
+      "manual_only_concepts": 135,
+      "jaccard_similarity": 0.495,
+      "completion_ratio": 0.0
+    },
+    {
+      "objective": "autonomous vehicle perception under adverse weather",
+      "agent_queries_issued": 15,
+      "agent_unique_papers": 53,
+      "manual_unique_papers": 53,
+      "agent_concepts_total": 400,
+      "manual_concepts_total": 400,
+      "shared_concepts": 286,
+      "agent_only_concepts": 114,
+      "manual_only_concepts": 114,
+      "jaccard_similarity": 0.556,
+      "completion_ratio": 0.0
+    },
+    {
+      "objective": "reinforcement learning for robotic manipulation",
+      "agent_queries_issued": 21,
+      "agent_unique_papers": 121,
+      "manual_unique_papers": 121,
+      "agent_concepts_total": 400,
+      "manual_concepts_total": 400,
+      "shared_concepts": 297,
+      "agent_only_concepts": 103,
+      "manual_only_concepts": 103,
+      "jaccard_similarity": 0.59,
+      "completion_ratio": 0.0
+    },
+    {
+      "objective": "climate change impact on crop yields",
+      "agent_queries_issued": 15,
+      "agent_unique_papers": 48,
+      "manual_unique_papers": 48,
+      "agent_concepts_total": 400,
+      "manual_concepts_total": 400,
+      "shared_concepts": 281,
+      "agent_only_concepts": 119,
+      "manual_only_concepts": 119,
+      "jaccard_similarity": 0.541,
+      "completion_ratio": 0.0
+    }
+  ]
+}

@@ -1,10 +1,11 @@
 requests
 arxiv
-faiss-cpu
 numpy
 tqdm
 pydantic
 scikit-learn
-scholarly
 joblib
 gradio
+groq
+python-dotenv
+pytest
