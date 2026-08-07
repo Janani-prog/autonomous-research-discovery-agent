@@ -1,13 +1,14 @@
 from models import ResearchState, Phase, Subgoal
 from planner import generate_subgoals
 from retrieval import search_arxiv
-from scoring import score_paper
+from scoring import score_papers
 from coverage import detect_concept_gaps
 from refine import refine_queries
 from inquiry import maybe_ask_question
 from concept_graph import build_concept_paper_map
 from contradictions import detect_contradictions
-from citations import fetch_citation_count
+from citations import enrich_papers_with_citations
+from cross_analysis import SAFETY_KEYWORDS
 
 
 def run_agent(objective: str):
@@ -38,6 +39,14 @@ def run_agent(objective: str):
                 if sg.completed:
                     continue
 
+                # A subgoal that's already been searched at least once, and
+                # has no freshly-computed refined_queries waiting from the
+                # last ANALYZE pass, has nothing new to search for this round
+                # (it's either exhausted its refinement budget, or its last
+                # round's queries were already consumed below).
+                if sg.papers and sg.refined_queries is None:
+                    continue
+
                 queries = sg.refined_queries or [
                 f"{sg.name.replace('_', ' ')} {objective}"
                 ]
@@ -50,6 +59,8 @@ def run_agent(objective: str):
                     except Exception:
                         continue
 
+                sg.refined_queries = None  # consumed - don't repeat next round
+
             state.phase = Phase.SCORE
 
         # =====================
@@ -57,14 +68,26 @@ def run_agent(objective: str):
         # =====================
         elif state.phase == Phase.SCORE:
             for sg in state.subgoals.values():
-                for p in sg.papers.values():
-                    if p.citation_count == 0:
-                        try:
-                            p.citation_count = fetch_citation_count(p.id)
-                        except Exception:
-                            p.citation_count = 0
+                papers = list(sg.papers.values())
+                if not papers:
+                    continue
 
-                    p.score = score_paper(p, sg.description)
+                to_enrich = [p for p in papers if not p.citation_checked]
+                if to_enrich:
+                    try:
+                        known_ids = {p.id for p in papers}
+                        enriched_ids = enrich_papers_with_citations(to_enrich, known_ids)
+                    except Exception:
+                        enriched_ids = set()
+                    # Only mark successfully-enriched papers as checked - a
+                    # rate-limited/failed lookup should stay eligible for a
+                    # retry on a later pass rather than being permanently
+                    # recorded as "checked, zero citations" from a failure.
+                    for p in to_enrich:
+                        if p.id in enriched_ids:
+                            p.citation_checked = True
+
+                score_papers(papers, sg.description)
 
             state.phase = Phase.ANALYZE
 
@@ -73,6 +96,7 @@ def run_agent(objective: str):
         # =====================
         elif state.phase == Phase.ANALYZE:
             unresolved = 0
+            queued_for_refinement = False
 
             for sg in state.subgoals.values():
                 if not sg.papers:
@@ -88,7 +112,13 @@ def run_agent(objective: str):
                 sg.concept_map = build_concept_paper_map(ranked)
                 sg.gaps = detect_concept_gaps(sg.concept_map)
 
-                if sg.name.lower() == "safety":
+                # Matched by keyword rather than exact name "safety" - subgoal
+                # names are now LLM-generated per objective (see planner.py),
+                # so they won't reliably be the literal string "safety".
+                is_safety_subgoal = any(
+                    k in sg.name.lower() or k in sg.description.lower() for k in SAFETY_KEYWORDS
+                )
+                if is_safety_subgoal:
                     contradictions = detect_contradictions(sg.papers.values())
                     if contradictions:
                         sg.gaps.append("Conflicting safety claims detected")
@@ -104,12 +134,27 @@ def run_agent(objective: str):
                     )
                     sg.refinements += 1
                     unresolved += 1
+                    queued_for_refinement = True
                 else:
                     unresolved += 1
 
             if unresolved == 0:
                 state.phase = Phase.TERMINATE
+            elif queued_for_refinement:
+                # At least one subgoal just got fresh refined_queries and
+                # still has refinement budget left - actually go run another
+                # SEARCH round with them. Without this branch, refined_queries
+                # would be computed here and then simply discarded, since the
+                # only other options are INQUIRE/TERMINATE, neither of which
+                # ever route back to SEARCH - which is exactly what the
+                # previous version of this function did: it advertised an
+                # "iterative self-refinement loop" that could never actually
+                # execute more than one search round.
+                state.phase = Phase.SEARCH
             else:
+                # Every remaining unresolved subgoal has exhausted its
+                # refinement budget (refinements >= 2) - nothing left to
+                # search for, so fall through to inquiry/termination.
                 state.confidence += 0.2
                 if state.confidence < 0.6:
                     state.phase = Phase.INQUIRE
