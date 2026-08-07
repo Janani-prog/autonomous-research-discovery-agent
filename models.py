@@ -1,5 +1,5 @@
 from typing import Dict, List, Optional, Tuple
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from enum import Enum
 
 
@@ -21,6 +21,7 @@ class Paper(BaseModel):
     url: Optional[str] = None
     pdf_url: Optional[str] = None
     citation_count: int = 0
+    citation_checked: bool = False
 
     # --- Ranking features (learned / heuristic) ---
     semantic_score: float = 0.0
@@ -30,9 +31,8 @@ class Paper(BaseModel):
 
     # --- Graph-related ---
     citation_edges: List[Tuple[str, str]] = Field(default_factory=list)
-    
-    class Config:
-        validate_assignment = True
+
+    model_config = ConfigDict(validate_assignment=True)
 
 
 class Subgoal(BaseModel):

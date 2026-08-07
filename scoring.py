@@ -1,86 +1,88 @@
-import math
 import os
 import joblib
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
 
 from models import Paper
-from graph_score import citation_depth_score
+from features import compute_features, ranker_feature_vector, batch_semantic_similarity, RANKER_FEATURE_KEYS
 
-
-# -----------------------------
-# Lightweight TF-IDF Vectorizer
-# -----------------------------
-_vectorizer = TfidfVectorizer(
-    stop_words="english",
-    max_features=5000
-)
-
-
-def semantic_similarity(paper: Paper, query: str) -> float:
-    """
-    Computes TF-IDF cosine similarity between paper text and query.
-    Lightweight and deployment-safe (no torch / transformers).
-    """
-    texts = [
-        query,
-        f"{paper.title} {paper.abstract}"
-    ]
-
-    tfidf = _vectorizer.fit_transform(texts)
-    sim = cosine_similarity(tfidf[0:1], tfidf[1:2])[0][0]
-
-    return float(sim)
-
-
-def recency_score(year: int) -> float:
-    """
-    Exponential decay for older papers.
-    """
-    age = max(1, 2025 - year)
-    return math.exp(-age / 5)
-
-
-def score_paper(paper: Paper, query: str) -> float:
-    """
-    Final scoring function combining:
-    - semantic relevance (TF-IDF)
-    - recency
-    - citation depth
-    - optional learned ranker
-    """
-    semantic = semantic_similarity(paper, query)
-    recency = recency_score(paper.year)
-    depth = citation_depth_score(getattr(paper, "citation_edges", []))
-
-    # Default heuristic score
-    heuristic = (
-        0.5 * semantic +
-        0.3 * recency +
-        0.2 * depth
-    )
-
-    # Use learned ranker if available
-    if ranker is not None:
-        features = [[semantic, recency, depth, 0.5]]
-        return float(ranker.predict(features)[0])
-
-    return float(heuristic)
-
-
-# -----------------------------
-# Optional Learned Ranker
-# -----------------------------
-ranker = None
+_ranker_bundle = None
 
 if os.path.exists("ranker.pkl"):
     try:
-        ranker = joblib.load("ranker.pkl")
+        _ranker_bundle = joblib.load("ranker.pkl")
+        valid = (
+            isinstance(_ranker_bundle, dict)
+            and "model" in _ranker_bundle
+            and _ranker_bundle.get("feature_keys") == RANKER_FEATURE_KEYS
+        )
+        if not valid:
+            # Stale format from before the leakage fix, or trained against a
+            # different feature set - ignore it rather than risk scoring off
+            # features it doesn't actually understand.
+            _ranker_bundle = None
     except Exception:
-        ranker = None
+        _ranker_bundle = None
 
 
-def learned_score(features):
-    if ranker is None:
+def _predicted_impact(features: dict) -> float | None:
+    """
+    Uses the learned ranker to predict a query-independent "impact" prior
+    (see train_data.py for how it's trained), normalized back to [0, 1] using
+    the min/max the labels were scaled with at training time.
+    """
+    if _ranker_bundle is None:
         return None
-    return float(ranker.predict([features])[0])
+
+    vec = [ranker_feature_vector(features)]
+    raw = float(_ranker_bundle["model"].predict(vec)[0])
+
+    y_min, y_max = _ranker_bundle["y_min"], _ranker_bundle["y_max"]
+    span = max(y_max - y_min, 1e-6)
+    normalized = (raw - y_min) / span
+    return max(0.0, min(1.0, normalized))
+
+
+def score_papers(papers: list[Paper], query: str) -> None:
+    """
+    Scores an entire batch of candidate papers for one subgoal/query in a
+    single pass, mutating each paper's .score (and its feature fields) in
+    place.
+
+    TF-IDF is fit ONCE across the whole batch here (see
+    features.batch_semantic_similarity) rather than per (query, single paper)
+    pair - see that function's docstring for why the old per-pair approach
+    made the "semantic" score nearly meaningless.
+
+    If a trained ranker is available, its prediction (a learned, query-
+    independent "impact" prior - see train_data.py) is blended with the
+    real-time query-semantic-similarity, since the ranker itself never sees
+    the current query. If no ranker is available, falls back to the
+    heuristic weighted sum.
+    """
+    semantic_by_id = batch_semantic_similarity(query, papers)
+
+    for paper in papers:
+        semantic = semantic_by_id.get(paper.id, 0.0)
+        features = compute_features(paper, semantic)
+
+        impact = _predicted_impact(features)
+        if impact is not None:
+            paper.score = 0.6 * semantic + 0.4 * impact
+        else:
+            paper.score = (
+                0.5 * features["semantic"]
+                + 0.3 * features["recency"]
+                + 0.2 * features["citation_depth"]
+            )
+
+        paper.semantic_score = features["semantic"]
+        paper.recency_score = features["recency"]
+        paper.citation_score = features["citation_depth"]
+        paper.concept_coverage = features["concept_coverage"]
+
+
+def score_paper(paper: Paper, query: str) -> float:
+    """Single-paper convenience wrapper. Prefer score_papers() for batches -
+    it shares one TF-IDF fit across the whole candidate set instead of
+    fitting one per call."""
+    score_papers([paper], query)
+    return paper.score
